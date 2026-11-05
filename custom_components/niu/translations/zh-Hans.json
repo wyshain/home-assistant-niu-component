@@ -1,0 +1,164 @@
+{
+    "config": {
+        "abort": {
+            "already_configured": "这辆车已添加。"
+        },
+        "error": {
+            "cannot_connect": "无法连接小牛服务器，请稍后重试。",
+            "invalid_auth": "小牛账号或密码不正确。",
+            "invalid_scooter": "找不到所选车辆，请检查车辆序号。",
+            "unknown": "小牛服务器返回了异常响应，请稍后重试。"
+        },
+        "step": {
+            "user": {
+                "data": {
+                    "username": "小牛账号",
+                    "password": "密码",
+                    "scooter_id": "车辆序号",
+                    "sensors_selected": "传感器"
+                },
+                "data_description": {
+                    "username": "请输入用于登录小牛 App 的账号。",
+                    "scooter_id": "按账号中的车辆顺序编号。第一辆车填 0，第二辆车填 1。",
+                    "sensors_selected": "选择要添加到 Home Assistant 的传感器。选择「最近行程地图」会添加轨迹相机。"
+                }
+            }
+        }
+    },
+    "title": "小牛电动车",
+    "selector": {
+        "sensors_selected": {
+            "options": {
+                "BatteryChargeA": "电池 A 电量",
+                "BatteryChargeB": "电池 B 电量",
+                "Isconnected": "连接状态",
+                "TimesCharged": "充电次数",
+                "temperatureDesc": "电池温度状态",
+                "Temperature": "电池温度",
+                "BatteryGradeA": "电池 A 健康度",
+                "BatteryGradeB": "电池 B 健康度",
+                "CurrentSpeed": "当前速度",
+                "ScooterConnected": "车辆在线状态",
+                "IsCharging": "充电状态",
+                "IsLocked": "锁定状态",
+                "TimeLeft": "预计剩余时间",
+                "EstimatedMileage": "预计续航里程",
+                "centreCtrlBatt": "中控电池电量",
+                "HDOP": "GPS 水平精度因子",
+                "Longitude": "经度",
+                "Latitude": "纬度",
+                "Distance": "行驶距离",
+                "RidingTime": "骑行时长",
+                "totalMileage": "总里程",
+                "DaysInUse": "车辆绑定天数",
+                "LastTrackStartTime": "最近行程开始时间",
+                "LastTrackEndTime": "最近行程结束时间",
+                "LastTrackDistance": "最近行程距离",
+                "LastTrackAverageSpeed": "最近行程平均速度",
+                "LastTrackRidingtime": "最近行程骑行时长",
+                "LastTrackThumb": "最近行程地图"
+            }
+        }
+    },
+    "entity": {
+        "sensor": {
+            "battery_charge_a": {
+                "name": "电池 A 电量"
+            },
+            "battery_charge_b": {
+                "name": "电池 B 电量"
+            },
+            "is_connected": {
+                "name": "连接状态"
+            },
+            "times_charged": {
+                "name": "充电次数"
+            },
+            "temp_descr": {
+                "name": "电池温度状态"
+            },
+            "temperature": {
+                "name": "电池温度"
+            },
+            "battery_grade_a": {
+                "name": "电池 A 健康度"
+            },
+            "battery_grade_b": {
+                "name": "电池 B 健康度"
+            },
+            "current_speed": {
+                "name": "当前速度"
+            },
+            "scooter_connected": {
+                "name": "车辆在线状态"
+            },
+            "is_charging": {
+                "name": "充电状态"
+            },
+            "is_locked": {
+                "name": "锁定状态"
+            },
+            "time_left": {
+                "name": "预计剩余时间"
+            },
+            "estimated_mileage": {
+                "name": "预计续航里程"
+            },
+            "centre_ctrl_batt": {
+                "name": "中控电池电量"
+            },
+            "hdp": {
+                "name": "GPS 水平精度因子"
+            },
+            "long": {
+                "name": "经度"
+            },
+            "lat": {
+                "name": "纬度"
+            },
+            "distance": {
+                "name": "行驶距离"
+            },
+            "riding_time": {
+                "name": "骑行时长"
+            },
+            "total_mileage": {
+                "name": "总里程"
+            },
+            "bind_days_count": {
+                "name": "车辆绑定天数"
+            },
+            "last_track_start_time": {
+                "name": "最近行程开始时间"
+            },
+            "last_track_end_time": {
+                "name": "最近行程结束时间"
+            },
+            "last_track_distance": {
+                "name": "最近行程距离"
+            },
+            "last_track_average_speed": {
+                "name": "最近行程平均速度"
+            },
+            "last_track_riding_time": {
+                "name": "最近行程骑行时长"
+            },
+            "battery_charge": {
+                "name": "电池电量"
+            },
+            "battery_grade": {
+                "name": "电池健康度"
+            }
+        },
+        "camera": {
+            "last_track": {
+                "name": "最近行程地图"
+            }
+        }
+    },
+    "device": {
+        "scooter": {
+            "name": "小牛电动车"
+        }
+    }
+}

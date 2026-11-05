@@ -67,7 +67,8 @@ class NiuSensor(NiuCoordinatorEntity, SensorEntity):
         self._data_field = data_field
         self._sensor_group = sensor_group
         self._attr_unique_id = f"sensor.niu_scooter_{api.sn}_{sensor_id}"
-        self._attr_name = f"NIU Scooter {api.sensor_prefix} {name}"
+        self._attr_translation_key = sensor_id
+        self._attr_suggested_object_id = f"NIU Scooter {api.sensor_prefix} {name}"
         self._attr_native_unit_of_measurement = unit or None
         self._attr_device_class = device_class if device_class != "none" else None
         self._attr_icon = icon

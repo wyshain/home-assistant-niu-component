@@ -45,6 +45,7 @@ STEP_USER_DATA_SCHEMA = vol.Schema(
         vol.Required(CONF_SENSORS, default=AVAILABLE_SENSORS): selector.SelectSelector(
             selector.SelectSelectorConfig(
                 options=AVAILABLE_SENSORS,
+                translation_key=CONF_SENSORS,
                 multiple=True,
                 mode=selector.SelectSelectorMode.LIST,
             ),

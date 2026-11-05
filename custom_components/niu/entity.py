@@ -12,12 +12,13 @@ from .coordinator import NiuDataUpdateCoordinator
 class NiuCoordinatorEntity(CoordinatorEntity[NiuDataUpdateCoordinator]):
     """Base entity attached to a scooter and its shared coordinator."""
 
+    _attr_has_entity_name = True
+
     def __init__(self, coordinator: NiuDataUpdateCoordinator) -> None:
         super().__init__(coordinator)
-        device_name = "Niu E-scooter"
         self._attr_device_info = DeviceInfo(
-            identifiers={(DOMAIN, device_name)},
-            name=device_name,
+            identifiers={(DOMAIN, "Niu E-scooter")},
+            translation_key="scooter",
             manufacturer="NIU",
             model="E-scooter",
         )

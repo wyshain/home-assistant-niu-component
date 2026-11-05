@@ -52,41 +52,35 @@ def _thumbnail_url_candidates(url: str) -> list[str]:
     ):
         return [url]
 
-    fk_gateway = parsed.hostname == "s.niucache.com" and parsed.path.startswith(
-        "/app-api-fk/"
-    )
-    direct_path = parsed.path.removeprefix("/app-api-fk") if fk_gateway else parsed.path
+    gateway_prefix = ""
+    if parsed.hostname == "s.niucache.com":
+        for prefix in ("/app-api-fk", "/app-api"):
+            if parsed.path.startswith(prefix + "/"):
+                gateway_prefix = prefix
+                break
+    direct_path = parsed.path.removeprefix(gateway_prefix)
 
     domestic_path = direct_path.replace("/track/overseas/thumb/", "/track/thumb/")
-    overseas_path = domestic_path.replace("/track/thumb/", "/track/overseas/thumb/")
-    if fk_gateway:
-        gateway_domestic_path = parsed.path.replace(
-            "/track/overseas/thumb/", "/track/thumb/"
+    # Preserve signed query parameters while trying domestic hosts only.
+    variants = []
+    if gateway_prefix:
+        variants.append(
+            urlunsplit(
+                parsed._replace(
+                    path=parsed.path.replace("/track/overseas/thumb/", "/track/thumb/")
+                )
+            )
         )
-        variants = [
-            urlunsplit(parsed._replace(path=gateway_domestic_path)),
-            url,
-            urlunsplit(
-                parsed._replace(netloc="app-api-fk.niu.com", path=domestic_path)
-            ),
-            urlunsplit(
-                parsed._replace(netloc="app-api-fk.niu.com", path=overseas_path)
-            ),
-        ]
-    else:
-        variants = [
-            url,
+    elif parsed.hostname != "app-api-fk.niu.com":
+        variants.append(urlunsplit(parsed._replace(path=domestic_path)))
+    variants.extend(
+        [
             urlunsplit(
                 parsed._replace(netloc="app-api.niucache.com", path=domestic_path)
             ),
-            urlunsplit(
-                parsed._replace(netloc="app-api-fk.niu.com", path=overseas_path)
-            ),
-            urlunsplit(
-                parsed._replace(netloc="app-api-fk.niu.com", path=domestic_path)
-            ),
             urlunsplit(parsed._replace(netloc="app-api.niu.com", path=domestic_path)),
         ]
+    )
     return list(dict.fromkeys(variants))
 
 
@@ -130,9 +124,10 @@ class LastTrackCamera(NiuCoordinatorEntity, Camera):
         Camera.__init__(self)
         self.hass = hass
         self._api = coordinator.data
-        self._attr_name = f"{self._api.sensor_prefix} Last Track Camera"
+        self._attr_translation_key = "last_track"
         # Preserve GenericCamera's previous identifier to avoid a duplicate entity.
-        self._attr_unique_id = self._attr_name
+        self._attr_unique_id = f"{self._api.sensor_prefix} Last Track Camera"
+        self._attr_suggested_object_id = self._attr_unique_id
         self._attr_is_streaming = False
         self._last_url: str | None = None
         self._last_image: bytes | None = None

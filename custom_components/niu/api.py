@@ -4,9 +4,11 @@ import logging
 from threading import Lock
 from time import gmtime, monotonic, strftime
 from typing import Any
+from zoneinfo import ZoneInfo
 
 import requests
 
+from .coordinates import gcj02_to_wgs84
 from .const import (
     ACCOUNT_BASE_URL,
     API_BASE_URL,
@@ -188,7 +190,9 @@ class NiuApi:
                 timeout=REQUEST_TIMEOUT,
             )
         except requests.exceptions.RequestException as err:
-            raise NiuConnectionError("Could not reach NIU authentication service") from err
+            raise NiuConnectionError(
+                "Could not reach NIU authentication service"
+            ) from err
 
         payload = self._parse_response(response, authentication_request=True)
         try:
@@ -253,7 +257,9 @@ class NiuApi:
                     self.refresh_access_token()
                     return
                 except NiuApiError as err:
-                    _LOGGER.warning("NIU token refresh failed; logging in again: %s", err)
+                    _LOGGER.warning(
+                        "NIU token refresh failed; logging in again: %s", err
+                    )
 
             self._password_login()
 
@@ -269,10 +275,10 @@ class NiuApi:
         attempted_generation = self._auth_generation
         response = self._perform_request(method, path, headers=headers, **kwargs)
 
-        if response.status_code == 401:
+        if response.status_code in (401, 403):
             self._recover_authentication(attempted_generation)
             response = self._perform_request(method, path, headers=headers, **kwargs)
-            if response.status_code == 401:
+            if response.status_code in (401, 403):
                 raise NiuAuthenticationError(
                     "NIU rejected authentication after token recovery"
                 )
@@ -317,9 +323,7 @@ class NiuApi:
             raise NiuRateLimitError(self._parse_retry_after(response))
         if status_code >= 500:
             raise NiuServerError(status_code)
-        if status_code in (401, 403) or (
-            authentication_request and status_code == 400
-        ):
+        if status_code in (401, 403) or (authentication_request and status_code == 400):
             raise NiuAuthenticationError(
                 f"NIU rejected authentication with HTTP {status_code}"
             )
@@ -348,17 +352,14 @@ class NiuApi:
 
     def _locale_headers(self) -> dict[str, str]:
         """Build the locale-aware headers shared by the GET endpoints."""
-        is_chinese = self.language.startswith("zh")
-        client_id = "Domestic" if is_chinese else "Overseas"
+        client_id = "Domestic"
         return {
             "Accept-Language": self.language,
             "user-agent": f"manager/4.10.4 (android; IN2020 11);lang={self.language};clientIdentifier={client_id};timezone={self.timezone};model=IN2020;deviceName=IN2020;ostype=android",
         }
 
     def get_vehicles_info(self, path):
-        return self._authenticated_request(
-            "GET", path, headers=self._locale_headers()
-        )
+        return self._authenticated_request("GET", path, headers=self._locale_headers())
 
     def get_info(
         self,
@@ -373,14 +374,13 @@ class NiuApi:
         self,
         path,
     ):
-        headers = {"Accept-Language": self.language}
+        headers = self._locale_headers()
         return self._authenticated_request(
-            "POST", path, headers=headers, data={"sn": self.sn}
+            "POST", path, headers=headers, json={"sn": self.sn}
         )
 
     def post_info_track(self, path):
-        is_chinese = self.language.startswith("zh")
-        client_id = "Domestic" if is_chinese else "Overseas"
+        client_id = "Domestic"
         headers = {
             "Accept-Language": self.language,
             "User-Agent": f"manager/1.0.0 (identifier);clientIdentifier={client_id}",
@@ -424,7 +424,15 @@ class NiuApi:
 
     def getDataPos(self, id_field):
         try:
-            return self.dataMoto["data"]["postion"][id_field]
+            position = self.dataMoto["data"]["postion"]
+            if not isinstance(position, dict):
+                return None
+            if id_field in ("lng", "lat"):
+                coordinates = gcj02_to_wgs84(position.get("lng"), position.get("lat"))
+                if coordinates is None:
+                    return None
+                return coordinates[0 if id_field == "lng" else 1]
+            return position[id_field]
         except (KeyError, TypeError):
             return None
 
@@ -442,9 +450,9 @@ class NiuApi:
 
         if id_field in ("startTime", "endTime"):
             try:
-                return datetime.fromtimestamp(value / 1000).strftime(
-                    "%Y-%m-%d %H:%M:%S"
-                )
+                return datetime.fromtimestamp(
+                    value / 1000, tz=ZoneInfo(self.timezone)
+                ).strftime("%Y-%m-%d %H:%M:%S")
             except (OSError, TypeError, ValueError):
                 return None
         if id_field == "ridingtime":
@@ -455,15 +463,8 @@ class NiuApi:
         if id_field == "track_thumb":
             if not isinstance(value, str):
                 return None
-            thumburl = value
-            # Rewrite domestic CDN URLs to overseas; skip if already overseas
-            if "app-api.niucache.com" in thumburl:
-                thumburl = thumburl.replace(
-                    "app-api.niucache.com", "app-api-fk.niu.com"
-                )
-            if "/track/thumb/" in thumburl and "/track/overseas/thumb/" not in thumburl:
-                thumburl = thumburl.replace("/track/thumb/", "/track/overseas/thumb/")
-            return thumburl
+            # Keep the server-provided domestic URL; camera.py handles fallbacks.
+            return value
         return value
 
     def updateBat(self):

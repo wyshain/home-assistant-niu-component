@@ -361,7 +361,7 @@ class NiuApiTest(unittest.TestCase):
                 with self.assertRaises(api_module.NiuVehicleNotFoundError):
                     self.api.initialize()
 
-    def test_get_vehicles_info_sends_overseas_locale_headers(self) -> None:
+    def test_domestic_client_keeps_english_display_locale(self) -> None:
         """The vehicle list request must carry the caller's locale."""
         self.set_authenticated()
         api_module.requests.get.return_value = data_response()
@@ -371,14 +371,12 @@ class NiuApiTest(unittest.TestCase):
 
         headers = api_module.requests.get.call_args.kwargs["headers"]
         self.assertEqual(headers["Accept-Language"], "en-US")
-        self.assertIn("clientIdentifier=Overseas", headers["user-agent"])
+        self.assertIn("clientIdentifier=Domestic", headers["user-agent"])
         self.assertIn("lang=en-US", headers["user-agent"])
 
     def test_get_vehicles_info_sends_domestic_identifier_for_chinese(self) -> None:
         """A Chinese locale must still be tagged as a domestic client."""
-        self.api = api_module.NiuApi(
-            "user@example.com", "secret", 0, language="zh-CN"
-        )
+        self.api = api_module.NiuApi("user@example.com", "secret", 0, language="zh-CN")
         self.api.sn = "TEST-SN"
         self.set_authenticated()
         api_module.requests.get.return_value = data_response()
@@ -389,6 +387,92 @@ class NiuApiTest(unittest.TestCase):
         headers = api_module.requests.get.call_args.kwargs["headers"]
         self.assertEqual(headers["Accept-Language"], "zh-CN")
         self.assertIn("clientIdentifier=Domestic", headers["user-agent"])
+
+    def test_requests_use_domestic_hosts_and_json_tally(self) -> None:
+        """Login and data stay domestic; overallTally uses the domestic JSON body."""
+        api_module.requests.post.return_value = token_response("domestic")
+        self.api.get_token()
+        self.assertEqual(
+            api_module.requests.post.call_args.args[0],
+            "https://account.niu.com/v3/api/oauth2/token",
+        )
+        api_module.requests.post.return_value = data_response()
+        self.api.post_info(api_module.MOTOINFO_ALL_API_URI)
+        call = api_module.requests.post.call_args
+        self.assertEqual(call.args[0], "https://app-api.niu.com/motoinfo/overallTally")
+        self.assertEqual(call.kwargs["json"], {"sn": "TEST-SN"})
+        self.assertNotIn("data", call.kwargs)
+        self.assertIn("Domestic", call.kwargs["headers"]["user-agent"])
+        api_module.requests.get.return_value = data_response()
+        self.api.get_info(api_module.MOTOR_INDEX_API_URI)
+        self.assertTrue(
+            api_module.requests.get.call_args.args[0].startswith(
+                "https://app-api.niu.com/"
+            )
+        )
+        self.api.post_info_track(api_module.TRACK_LIST_API_URI)
+        self.assertIn(
+            "Domestic",
+            api_module.requests.post.call_args.kwargs["headers"]["User-Agent"],
+        )
+
+    def test_403_recovers_once(self) -> None:
+        """An HTTP authentication rejection must use bounded token recovery."""
+        self.set_authenticated(refresh_token="refresh")
+        api_module.requests.get.side_effect = [FakeResponse(403), data_response()]
+        api_module.requests.post.return_value = token_response("renewed")
+        with patch.object(api_module, "monotonic", return_value=0):
+            self.api.get_info(api_module.MOTOR_INDEX_API_URI)
+        self.assertEqual(api_module.requests.get.call_count, 2)
+        self.assertEqual(api_module.requests.post.call_count, 1)
+
+    def test_domestic_positions_convert_without_mutating_raw_cache(self) -> None:
+        """A known Beijing fix converts once, even after repeated reads."""
+        raw = {"lng": "116.404", "lat": "39.915"}
+        self.api.dataMoto = {"data": {"postion": raw.copy()}}
+        self.assertAlmostEqual(self.api.getDataPos("lng"), 116.397756, places=5)
+        self.assertAlmostEqual(self.api.getDataPos("lat"), 39.913596, places=5)
+        self.assertAlmostEqual(self.api.getDataPos("lng"), 116.397756, places=5)
+        self.assertEqual(self.api.dataMoto["data"]["postion"], raw)
+
+    def test_invalid_and_non_mainland_positions(self) -> None:
+        """Missing fixes never become (0, 0); locations outside bounds are unchanged."""
+        for position in (
+            None,
+            [],
+            {},
+            {"lng": 116.4},
+            {"lng": 0, "lat": 0},
+            {"lng": "bad", "lat": 39},
+            {"lng": float("nan"), "lat": 39},
+            {"lng": 116, "lat": float("inf")},
+            {"lng": 181, "lat": 39},
+        ):
+            with self.subTest(position=position):
+                self.api.dataMoto = {"data": {"postion": position}}
+                self.assertIsNone(self.api.getDataPos("lat"))
+                self.assertIsNone(self.api.getDataPos("lng"))
+        self.api.dataMoto = {"data": {"postion": {"lng": -0.12, "lat": 51.5}}}
+        self.assertEqual(self.api.getDataPos("lng"), -0.12)
+        self.assertEqual(self.api.getDataPos("lat"), 51.5)
+
+    def test_track_timestamps_use_the_home_assistant_timezone(self) -> None:
+        """Display trip times in the configured zone regardless of the host TZ."""
+        hass = types.SimpleNamespace(
+            config=types.SimpleNamespace(language="zh-Hans", country="TW", time_zone="Asia/Taipei")
+        )
+        api = api_module.NiuApi.from_hass(hass, "user", "pw", 0)
+        api.dataTrackInfo = {"data": [{"startTime": 0, "endTime": 60_000, "ridingtime": 60}]}
+
+        self.assertEqual(api.getDataTrack("startTime"), "1970-01-01 08:00:00")
+        self.assertEqual(api.getDataTrack("endTime"), "1970-01-01 08:01:00")
+        self.assertEqual(api.getDataTrack("ridingtime"), "00:01:00")
+
+    def test_track_preserves_domestic_url_and_query(self) -> None:
+        """Signed domestic thumbnail links must not be rewritten overseas."""
+        url = "https://app-api.niucache.com/track/thumb/ride.png?sign=a%2Fb&token=test"
+        self.api.dataTrackInfo = {"data": [{"track_thumb": url}]}
+        self.assertEqual(self.api.getDataTrack("track_thumb"), url)
 
 
 if __name__ == "__main__":

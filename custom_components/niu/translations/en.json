@@ -25,5 +25,140 @@
             }
         }
     },
-    "title": "NIU"
+    "title": "NIU",
+    "selector": {
+        "sensors_selected": {
+            "options": {
+                "BatteryChargeA": "Battery A charge",
+                "BatteryChargeB": "Battery B charge",
+                "Isconnected": "Connection status",
+                "TimesCharged": "Charge count",
+                "temperatureDesc": "Battery temperature status",
+                "Temperature": "Battery temperature",
+                "BatteryGradeA": "Battery A health",
+                "BatteryGradeB": "Battery B health",
+                "CurrentSpeed": "Current speed",
+                "ScooterConnected": "Vehicle online",
+                "IsCharging": "Charging status",
+                "IsLocked": "Lock status",
+                "TimeLeft": "Estimated time remaining",
+                "EstimatedMileage": "Estimated range",
+                "centreCtrlBatt": "Controller battery level",
+                "HDOP": "GPS horizontal dilution of precision",
+                "Longitude": "Longitude",
+                "Latitude": "Latitude",
+                "Distance": "Trip distance",
+                "RidingTime": "Trip duration",
+                "totalMileage": "Total mileage",
+                "DaysInUse": "Days since binding",
+                "LastTrackStartTime": "Last trip start time",
+                "LastTrackEndTime": "Last trip end time",
+                "LastTrackDistance": "Last trip distance",
+                "LastTrackAverageSpeed": "Last trip average speed",
+                "LastTrackRidingtime": "Last trip duration",
+                "LastTrackThumb": "Last trip map"
+            }
+        }
+    },
+    "entity": {
+        "sensor": {
+            "battery_charge_a": {
+                "name": "Battery A charge"
+            },
+            "battery_charge_b": {
+                "name": "Battery B charge"
+            },
+            "is_connected": {
+                "name": "Connection status"
+            },
+            "times_charged": {
+                "name": "Charge count"
+            },
+            "temp_descr": {
+                "name": "Battery temperature status"
+            },
+            "temperature": {
+                "name": "Battery temperature"
+            },
+            "battery_grade_a": {
+                "name": "Battery A health"
+            },
+            "battery_grade_b": {
+                "name": "Battery B health"
+            },
+            "current_speed": {
+                "name": "Current speed"
+            },
+            "scooter_connected": {
+                "name": "Vehicle online"
+            },
+            "is_charging": {
+                "name": "Charging status"
+            },
+            "is_locked": {
+                "name": "Lock status"
+            },
+            "time_left": {
+                "name": "Estimated time remaining"
+            },
+            "estimated_mileage": {
+                "name": "Estimated range"
+            },
+            "centre_ctrl_batt": {
+                "name": "Controller battery level"
+            },
+            "hdp": {
+                "name": "GPS horizontal dilution of precision"
+            },
+            "long": {
+                "name": "Longitude"
+            },
+            "lat": {
+                "name": "Latitude"
+            },
+            "distance": {
+                "name": "Trip distance"
+            },
+            "riding_time": {
+                "name": "Trip duration"
+            },
+            "total_mileage": {
+                "name": "Total mileage"
+            },
+            "bind_days_count": {
+                "name": "Days since binding"
+            },
+            "last_track_start_time": {
+                "name": "Last trip start time"
+            },
+            "last_track_end_time": {
+                "name": "Last trip end time"
+            },
+            "last_track_distance": {
+                "name": "Last trip distance"
+            },
+            "last_track_average_speed": {
+                "name": "Last trip average speed"
+            },
+            "last_track_riding_time": {
+                "name": "Last trip duration"
+            },
+            "battery_charge": {
+                "name": "Battery charge"
+            },
+            "battery_grade": {
+                "name": "Battery health"
+            }
+        },
+        "camera": {
+            "last_track": {
+                "name": "Last trip map"
+            }
+        }
+    },
+    "device": {
+        "scooter": {
+            "name": "NIU electric scooter"
+        }
+    }
 }

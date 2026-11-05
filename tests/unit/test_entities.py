@@ -133,7 +133,7 @@ class EntityTest(unittest.IsolatedAsyncioTestCase):
         self.assertIsInstance(sensor_a._attr_device_info["model"], str)
         self.assertEqual(sensor_a._attr_device_info, sensor_b._attr_device_info)
 
-    async def test_legacy_battery_entities_keep_names_and_unique_ids(self) -> None:
+    async def test_legacy_battery_entities_keep_object_ids_and_unique_ids(self) -> None:
         """Reloading an old config entry must restore its original entities."""
         entry = types.SimpleNamespace(
             entry_id="entry-1",
@@ -152,7 +152,7 @@ class EntityTest(unittest.IsolatedAsyncioTestCase):
 
         entities = async_add_entities.call_args.args[0]
         self.assertEqual(
-            [entity._attr_name for entity in entities],
+            [entity._attr_suggested_object_id for entity in entities],
             ["NIU Scooter MQi BatteryCharge", "NIU Scooter MQi BatteryGrade"],
         )
         self.assertEqual(
@@ -267,7 +267,7 @@ class EntityTest(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(camera.content_type, "image/png")
 
     async def test_camera_falls_back_after_niu_img_fail_response(self) -> None:
-        """The domestic CDN URL should be tried after NIU's overseas URL fails."""
+        """Domestic API should be tried after the domestic CDN fails."""
         overseas_url = (
             "https://app-api-fk.niu.com/track/overseas/thumb/ride.png?token=test"
         )
@@ -291,7 +291,7 @@ class EntityTest(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(image, PNG_IMAGE)
         self.assertEqual(
             [call.args[0] for call in client.get.await_args_list],
-            [overseas_url, domestic_url],
+            [domestic_url, "https://app-api.niu.com/track/thumb/ride.png?token=test"],
         )
         warning.assert_called_once_with(
             "NIU last-track thumbnail returned invalid image data: %s",
@@ -310,7 +310,7 @@ class EntityTest(unittest.IsolatedAsyncioTestCase):
             candidates,
         )
         self.assertIn(
-            "https://app-api-fk.niu.com/track/overseas/thumb/ride.png?token=test",
+            "https://app-api.niu.com/track/thumb/ride.png?token=test",
             candidates,
         )
 
@@ -328,10 +328,9 @@ class EntityTest(unittest.IsolatedAsyncioTestCase):
             [
                 "https://s.niucache.com/app-api-fk/v5/track/thumb/"
                 "TEST-SN/test-ride/image.png?token=test",
-                source_url,
-                "https://app-api-fk.niu.com/v5/track/thumb/"
+                "https://app-api.niucache.com/v5/track/thumb/"
                 "TEST-SN/test-ride/image.png?token=test",
-                "https://app-api-fk.niu.com/v5/track/overseas/thumb/"
+                "https://app-api.niu.com/v5/track/thumb/"
                 "TEST-SN/test-ride/image.png?token=test",
             ],
         )
@@ -477,6 +476,52 @@ class EntityTest(unittest.IsolatedAsyncioTestCase):
                 for call in warning.call_args_list
             )
         )
+
+    def test_domestic_gateway_keeps_signed_query_and_strips_gateway_prefix(
+        self,
+    ) -> None:
+        """Domestic CDN gateways need direct-host fallbacks without /app-api."""
+        url = "https://s.niucache.com/app-api/v5/track/thumb/ride.png?sign=a%2Fb&token=test"
+        candidates = self.camera_module._thumbnail_url_candidates(url)
+        self.assertEqual(
+            candidates,
+            [
+                url,
+                "https://app-api.niucache.com/v5/track/thumb/ride.png?sign=a%2Fb&token=test",
+                "https://app-api.niu.com/v5/track/thumb/ride.png?sign=a%2Fb&token=test",
+            ],
+        )
+
+    def test_connection_and_position_entities_share_converted_coordinates(self) -> None:
+        """Both map attributes and coordinate entities read the same converted fix."""
+        api = importlib.import_module("custom_components.niu.api").NiuApi(
+            "user", "pw", 0
+        )
+        api.sn = "TEST-SN"
+        api.dataMoto = {
+            "data": {"isConnected": True, "postion": {"lng": 116.404, "lat": 39.915}}
+        }
+        api.dataBat = {"data": {"batteries": {"compartmentA": {"isConnected": False}}}}
+        coordinator = FakeCoordinator(api)
+
+        def sensor(name):
+            return self.sensor_module.NiuSensor(
+                coordinator, name, *self.const.SENSOR_TYPES[name]
+            )
+
+        connected = sensor("Isconnected")
+        self.assertTrue(connected.native_value)
+        self.assertIsNone(connected._attr_device_class)
+        self.assertEqual(
+            connected.extra_state_attributes["latitude"],
+            sensor("Latitude").native_value,
+        )
+        self.assertEqual(
+            connected.extra_state_attributes["longitude"],
+            sensor("Longitude").native_value,
+        )
+        api.dataMoto["data"]["isConnected"] = False
+        self.assertFalse(connected.native_value)
 
 
 if __name__ == "__main__":
